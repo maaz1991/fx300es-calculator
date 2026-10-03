@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Casio fx-300ES PLUS Emulator</title>
+<style>
+  body { background:#2b2b2b; display:flex; justify-content:center; align-items:center; min-height:100vh; margin:0; font-family:Arial, sans-serif; }
+  .calc {
+    width: 330px; background: linear-gradient(#3a3a3a,#1c1c1c);
+    border-radius: 18px; padding: 22px 18px 28px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .solar { height: 26px; border-radius: 4px; background: repeating-linear-gradient(90deg,#4a5a6a 0 14px,#3a4a5a 14px 16px); margin: 0 40px 12px; border:1px solid #000; }
+  .display {
+    background:#cfe8d5; border-radius:6px; padding:10px 12px; margin-bottom:14px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.4); min-height:56px;
+  }
+  .mode { font-size:10px; color:#333; display:flex; justify-content:space-between; }
+  .expr { font-family:'Courier New', monospace; font-size:16px; color:#1a2a1a; text-align:right; min-height:20px; word-break:break-all; }
+  .result { font-family:'Courier New', monospace; font-size:22px; font-weight:bold; color:#0a1a0a; text-align:right; min-height:26px; }
+  .row { display:flex; gap:6px; margin-bottom:6px; }
+  button {
+    flex:1; height:34px; border:none; border-radius:6px; font-size:12px; font-weight:bold;
+    background:linear-gradient(#5a5a5a,#3c3c3c); color:#fff; cursor:pointer;
+    box-shadow: 0 2px 3px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  button:active { transform: translateY(1px); }
+  .fn { background:linear-gradient(#6a6a6a,#4a4a4a); font-size:11px; }
+  .num { background:linear-gradient(#4a90d9,#3570b0); font-size:14px; }
+  .op  { background:linear-gradient(#444,#222); font-size:14px; }
+  .shift { background:linear-gradient(#f0d040,#d0b020); color:#222; }
+  .alpha { background:linear-gradient(#d05050,#a03030); }
+  .eq { background:linear-gradient(#e05050,#b03030); }
+  .top { background:linear-gradient(#888,#666); font-size:10px; }
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="solar"></div>
+  <div class="display">
+    <div class="mode"><span id="degRad">Deg</span><span>fx-300ES PLUS</span></div>
+    <div class="expr" id="expr"></div>
+    <div class="result" id="result">0</div>
+  </div>
+  <div class="row">
+    <button class="shift" onclick="toggleShift()">SHIFT</button>
+    <button class="alpha">ALPHA</button>
+    <button class="top" onclick="toggleMode()">MODE<br>Deg/Rad</button>
+    <button class="top" onclick="clearEntry()">CE</button>
+    <button class="top" onclick="clearAll()">ON/<br>AC</button>
+    <button class="top" onclick="del()">DEL</button>
+  </div>
+  <div class="row">
+    <button class="fn" onclick="ins('sin(')">sin</button>
+    <button class="fn" onclick="ins('cos(')">cos</button>
+    <button class="fn" onclick="ins('tan(')">tan</button>
+    <button class="fn" onclick="ins('log(')">log</button>
+    <button class="fn" onclick="ins('ln(')">ln</button>
+  </div>
+  <div class="row">
+    <button class="fn" onclick="ins('√(')">√</button>
+    <button class="fn" onclick="ins('^2')">x²</button>
+    <button class="fn" onclick="ins('^3')">x³</button>
+    <button class="fn" onclick="ins('^(')">x^y</button>
+    <button class="fn" onclick="ins('1/(')">1/x</button>
+  </div>
+  <div class="row">
+    <button class="fn" onclick="ins('!')">x!</button>
+    <button class="fn" onclick="ins('(')">(</button>
+    <button class="fn" onclick="ins(')')">)</button>
+    <button class="fn" onclick="ins('π')">π</button>
+    <button class="fn" onclick="ins('e')">e</button>
+  </div>
+  <div class="row">
+    <button class="fn" onclick="ins('10^(')">10^x</button>
+    <button class="fn" onclick="ins('e^(')">e^x</button>
+    <button class="fn" onclick="ins('%')">%</button>
+    <button class="fn" onclick="ins('Ans')">Ans</button>
+    <button class="fn" onclick="sign()">(-)</button>
+  </div>
+  <div class="row">
+    <button class="num" onclick="ins('7')">7</button>
+    <button class="num" onclick="ins('8')">8</button>
+    <button class="num" onclick="ins('9')">9</button>
+    <button class="op" onclick="ins('/')">÷</button>
+    <button class="op" onclick="ins('*')">×</button>
+  </div>
+  <div class="row">
+    <button class="num" onclick="ins('4')">4</button>
+    <button class="num" onclick="ins('5')">5</button>
+    <button class="num" onclick="ins('6')">6</button>
+    <button class="num" onclick="ins('+')">+</button>
+    <button class="num" onclick="ins('-')">−</button>
+  </div>
+  <div class="row">
+    <button class="num" onclick="ins('1')">1</button>
+    <button class="num" onclick="ins('2')">2</button>
+    <button class="num" onclick="ins('3')">3</button>
+    <button class="num" onclick="ins('0')">0</button>
+    <button class="num" onclick="ins('.')">.</button>
+  </div>
+  <div class="row">
+    <button class="eq" style="flex:5" onclick="calc()">=</button>
+  </div>
+</div>
+<script>
+let expr = '', ans = 0, degrees = true, shifted = false;
+function ins(t){ expr += t; render(); }
+function del(){ expr = expr.slice(0,-1); render(); }
+function clearAll(){ expr=''; document.getElementById('result').textContent='0'; render(); }
+function clearEntry(){
+  // CE: clear current number entry, keep earlier expression and Ans
+  const marks = ['+','-','*','/','^','('];
+  let idx = -1;
+  for (const m of marks) idx = Math.max(idx, expr.lastIndexOf(m));
+  expr = idx >= 0 ? expr.slice(0, idx + 1) : '';
+  render();
+}
+function sign(){ ins('(-'); }
+function toggleShift(){ shifted = !shifted; document.querySelector('.shift').style.opacity = shifted?'0.6':'1'; }
+function toggleMode(){ degrees=!degrees; document.getElementById('degRad').textContent = degrees?'Deg':'Rad'; }
+function render(){ document.getElementById('expr').textContent = expr; }
+function calc(){
+  try{
+    let e = expr
+      .replace(/π/g,'('+Math.PI+')')
+      .replace(/\be\^\(/g,'Math.exp(')
+      .replace(/\be/g,'('+Math.E+')')
+      .replace(/Ans/g,'('+ans+')')
+      .replace(/√\(/g,'Math.sqrt(')
+      .replace(/\^/g,'**')
+      .replace(/(\d+)!/g, (m,n)=>fact(parseInt(n)))
+      .replace(/(\))!/g, 'fact$1')
+      .replace(/log\(/g,'Math.log10(')
+      .replace(/ln\(/g,'Math.log(')
+      .replace(/%/g,'/100');
+    const trig = degrees ? (x)=>x*Math.PI/180 : (x)=>x;
+    e = e.replace(/sin\(/g, 'sinD(').replace(/cos\(/g,'cosD(').replace(/tan\(/g,'tanD(');
+    const sinD=x=>Math.sin(trig(x)), cosD=x=>Math.cos(trig(x)), tanD=x=>Math.tan(trig(x));
+    const fact=n=>n<=1?1:n*fact(n-1);
+    const r = eval(e);
+    ans = r;
+    document.getElementById('result').textContent = Number.isFinite(r) ? (+r.toPrecision(12)).toString() : 'Math ERROR';
+  }catch(err){ document.getElementById('result').textContent = 'Syntax ERROR'; }
+}
+</script>
+</body>
+</html>
